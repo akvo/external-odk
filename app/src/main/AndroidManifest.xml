@@ -11,6 +11,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ExternalODK">
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -18,10 +19,21 @@
             android:theme="@style/Theme.ExternalODK">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".GeoshapeValidationActivity"
+            android:exported="true"
+            android:label="Geoshape Validator"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="com.akvo.externalodk.VALIDATE_GEOSHAPE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
     </application>
 
 </manifest>
