@@ -28,6 +28,73 @@ class KoboRepository @Inject constructor(
     private val formMetadataDao: FormMetadataDao
 ) {
 
+    /**
+     * Performs a delta sync, fetching only submissions newer than the last sync.
+     * If no previous sync exists, falls back to full fetch.
+     *
+     * @return Result containing the number of new/updated submissions fetched
+     */
+    suspend fun resync(assetUid: String): Result<Int> {
+        val lastSyncTimestamp = formMetadataDao.getLastSyncTimestamp(assetUid)
+
+        // If no previous sync, do a full fetch
+        if (lastSyncTimestamp == null) {
+            return fetchSubmissions(assetUid)
+        }
+
+        return try {
+            var totalFetched = 0
+            var start = 0
+            val pageSize = KoboApiService.DEFAULT_PAGE_SIZE
+
+            // Build query for submissions newer than last sync
+            val lastSyncIso = formatTimestampToIso(lastSyncTimestamp)
+            val query = """{"_submission_time": {"${"$"}gt": "$lastSyncIso"}}"""
+
+            do {
+                val response = apiService.getSubmissionsSince(
+                    assetUid = assetUid,
+                    query = query,
+                    limit = pageSize,
+                    start = start
+                )
+
+                val entities = response.results.mapNotNull { jsonObject ->
+                    transformToEntity(assetUid, jsonObject)
+                }
+
+                if (entities.isNotEmpty()) {
+                    submissionDao.insertAll(entities)
+                    totalFetched += entities.size
+                }
+
+                start += pageSize
+            } while (response.next != null)
+
+            // Update sync timestamp if we fetched anything
+            if (totalFetched > 0) {
+                val latestSubmissionTime = submissionDao.getLatestSubmissionTime(assetUid)
+                if (latestSubmissionTime != null) {
+                    formMetadataDao.insertOrUpdate(
+                        FormMetadataEntity(
+                            assetUid = assetUid,
+                            lastSyncTimestamp = latestSubmissionTime
+                        )
+                    )
+                }
+            }
+
+            Result.success(totalFetched)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Fetches all submissions for a form (initial download).
+     *
+     * @return Result containing the total number of submissions fetched
+     */
     suspend fun fetchSubmissions(assetUid: String): Result<Int> {
         return try {
             var totalFetched = 0
@@ -166,5 +233,11 @@ class KoboRepository @Inject constructor(
                 null
             }
         }
+    }
+
+    private fun formatTimestampToIso(timestamp: Long): String {
+        val instant = Instant.ofEpochMilli(timestamp)
+        val localDateTime = LocalDateTime.ofInstant(instant, ZoneOffset.UTC)
+        return localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
     }
 }
