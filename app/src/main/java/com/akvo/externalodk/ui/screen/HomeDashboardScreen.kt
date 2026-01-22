@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -35,7 +34,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,12 +65,10 @@ fun HomeDashboardScreen(
         uiState = uiState,
         onResyncClick = onResyncClick,
         onLogout = {
-            // TODO: Clear local database
-            onLogout()
+            viewModel.logout { onLogout() }
         },
         onSearchQueryChange = viewModel::onSearchQueryChange,
         onSearchActiveChange = viewModel::onSearchActiveChange,
-        onLoadMore = viewModel::loadMore,
         modifier = modifier
     )
 }
@@ -85,28 +81,12 @@ private fun HomeDashboardContent(
     onLogout: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onSearchActiveChange: (Boolean) -> Unit,
-    onLoadMore: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
-
-    // Detect when user scrolls near the bottom
-    val shouldLoadMore by remember {
-        derivedStateOf {
-            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val totalItems = listState.layoutInfo.totalItemsCount
-            lastVisibleItem >= totalItems - 3 // Load when 3 items from end
-        }
-    }
-
-    LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore && uiState.canLoadMore && !uiState.isLoadingMore && !uiState.isSearchActive) {
-            onLoadMore()
-        }
-    }
 
     LaunchedEffect(uiState.isSearchActive) {
         if (uiState.isSearchActive) {
@@ -264,8 +244,6 @@ private fun HomeDashboardContent(
                 SubmissionList(
                     submissions = uiState.filteredSubmissions,
                     listState = listState,
-                    isLoadingMore = uiState.isLoadingMore,
-                    canLoadMore = uiState.canLoadMore && !uiState.isSearchActive,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
@@ -279,8 +257,6 @@ private fun HomeDashboardContent(
 private fun SubmissionList(
     submissions: List<com.akvo.externalodk.ui.model.SubmissionUiModel>,
     listState: LazyListState,
-    isLoadingMore: Boolean,
-    canLoadMore: Boolean,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -295,25 +271,6 @@ private fun SubmissionList(
         ) { submission ->
             SubmissionListItem(submission = submission)
         }
-
-        // Loading indicator at the bottom
-        if (isLoadingMore || canLoadMore) {
-            item(key = "loading_indicator") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isLoadingMore) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -323,14 +280,13 @@ private fun HomeDashboardPreview() {
     ExternalODKTheme {
         HomeDashboardContent(
             uiState = HomeUiState(
-                submissions = HomeViewModel.mockSubmissions,
-                filteredSubmissions = HomeViewModel.mockSubmissions
+                submissions = previewSubmissions,
+                filteredSubmissions = previewSubmissions
             ),
             onResyncClick = {},
             onLogout = {},
             onSearchQueryChange = {},
-            onSearchActiveChange = {},
-            onLoadMore = {}
+            onSearchActiveChange = {}
         )
     }
 }
@@ -344,8 +300,7 @@ private fun HomeDashboardLoadingPreview() {
             onResyncClick = {},
             onLogout = {},
             onSearchQueryChange = {},
-            onSearchActiveChange = {},
-            onLoadMore = {}
+            onSearchActiveChange = {}
         )
     }
 }
@@ -356,16 +311,15 @@ private fun HomeDashboardSearchActivePreview() {
     ExternalODKTheme {
         HomeDashboardContent(
             uiState = HomeUiState(
-                submissions = HomeViewModel.mockSubmissions,
-                filteredSubmissions = HomeViewModel.mockSubmissions,
+                submissions = previewSubmissions,
+                filteredSubmissions = previewSubmissions,
                 isSearchActive = true,
                 searchQuery = "ifir"
             ),
             onResyncClick = {},
             onLogout = {},
             onSearchQueryChange = {},
-            onSearchActiveChange = {},
-            onLoadMore = {}
+            onSearchActiveChange = {}
         )
     }
 }
@@ -382,8 +336,28 @@ private fun HomeDashboardEmptyPreview() {
             onResyncClick = {},
             onLogout = {},
             onSearchQueryChange = {},
-            onSearchActiveChange = {},
-            onLoadMore = {}
+            onSearchActiveChange = {}
         )
     }
 }
+
+private val previewSubmissions = listOf(
+    com.akvo.externalodk.ui.model.SubmissionUiModel(
+        uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        submittedBy = "ifirmawan",
+        submissionTime = "2026-01-21 09:30",
+        isSynced = true
+    ),
+    com.akvo.externalodk.ui.model.SubmissionUiModel(
+        uuid = "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+        submittedBy = "john.doe",
+        submissionTime = "2026-01-21 08:15",
+        isSynced = true
+    ),
+    com.akvo.externalodk.ui.model.SubmissionUiModel(
+        uuid = "c3d4e5f6-a7b8-9012-cdef-123456789012",
+        submittedBy = "maria.santos",
+        submissionTime = "2026-01-20 16:45",
+        isSynced = true
+    )
+)
