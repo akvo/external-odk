@@ -144,6 +144,7 @@ private fun HomeDashboardContent(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             if (uiState.isSearchActive) {
                 TopAppBar(
