@@ -25,6 +25,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".validation.PolygonValidationActivity"
+            android:exported="true"
+            android:theme="@style/Theme.ExternalODK.AppCompat">
+            <intent-filter>
+                <action android:name="com.akvo.externalodk.VALIDATE_POLYGON" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
