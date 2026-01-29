@@ -76,6 +76,7 @@ retrofit-kotlinx-serialization = { group = "com.jakewharton.retrofit", name = "r
 desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 jts-core = { group = "org.locationtech.jts", name = "jts-core", version.ref = "jts" }
+jts-core = { group = "org.locationtech.jts", name = "jts-core", version.ref = "jts" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

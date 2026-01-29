@@ -90,6 +90,9 @@ dependencies {
 
     // JTS Topology Suite for polygon validation
     implementation(libs.jts.core)
+
+    // JTS Topology Suite for polygon validation
+    implementation(libs.jts.core)
     testImplementation(libs.junit)
     testImplementation(libs.room.testing)
     testImplementation(libs.mockk)
