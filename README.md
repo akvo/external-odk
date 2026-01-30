@@ -146,14 +146,14 @@ adb devices
 ./gradlew connectedAndroidTest
 
 # Run specific instrumented test
-./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.akvo.afribamodkval.ExampleInstrumentedTest
+./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=org.akvo.afribamodkvalidator.ExampleInstrumentedTest
 ```
 
 ### Test Structure
 
 ```
 app/src/test/                          # Unit tests (JVM, fast)
-├── java/com/akvo/externalodk/
+├── java/org/akvo/afribamodkvalidator/
 │   ├── data/
 │   │   ├── dao/
 │   │   │   ├── SubmissionDaoTest.kt   # 11 tests: CRUD, Flow, pagination
@@ -168,7 +168,7 @@ app/src/test/                          # Unit tests (JVM, fast)
         └── assets-456-data-list.json  # Form 456 sample data
 
 app/src/androidTest/                   # Instrumented tests (device)
-└── java/com/akvo/externalodk/
+└── java/org/akvo/afribamodkvalidator/
     └── ExampleInstrumentedTest.kt
 ```
 
@@ -288,7 +288,7 @@ fun `test Flow emissions`() = runTest {
 ## Project Structure
 
 ```
-app/src/main/java/com/akvo/externalodk/
+app/src/main/java/org/akvo/afribamodkvalidator/
 ├── AfriBamODKValidatorApplication.kt    # Hilt Application class
 ├── MainActivity.kt              # Main entry point
 ├── navigation/
