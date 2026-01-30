@@ -17,7 +17,7 @@ class PolygonValidationActivity : AppCompatActivity() {
         val polygonData = intent.getStringExtra("shape")
 
         if (polygonData.isNullOrBlank()) {
-            showErrorAndBlock("No polygon data received from form.")
+            showErrorAndBlock("No polygon data received from form.", null)
             return
         }
 
@@ -26,18 +26,27 @@ class PolygonValidationActivity : AppCompatActivity() {
                 returnSuccess(polygonData)
             }
             is ValidationResult.Error -> {
-                showErrorAndBlock(result.message)
+                showErrorAndBlock(result.message, polygonData)
             }
         }
     }
 
-    private fun showErrorAndBlock(message: String) {
+    private fun showErrorAndBlock(message: String, data: String?) {
         AlertDialog.Builder(this)
             .setTitle("Validation Failed")
             .setMessage(message)
             .setCancelable(false)
             .setPositiveButton("OK") { dialog, _ ->
-                setResult(RESULT_CANCELED)
+                if (!data.isNullOrEmpty()) {
+                    // Data available: set RESULT_OK with reset (null) value
+                    val resultIntent = Intent().apply {
+                        putExtra("value", null as String?)
+                    }
+                    setResult(RESULT_OK, resultIntent)
+                } else {
+                    // No data: set RESULT_CANCELED without intent data
+                    setResult(RESULT_CANCELED)
+                }
                 dialog.dismiss()
                 finish()
             }
