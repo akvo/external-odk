@@ -1,4 +1,4 @@
-package com.akvo.externalodk.validation
+package org.akvo.afribamodkvalidator.validation
 
 import android.content.Intent
 import android.os.Bundle

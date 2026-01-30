@@ -1,4 +1,4 @@
-package com.akvo.externalodk.validation
+package org.akvo.afribamodkvalidator.validation
 
 import android.util.Log
 import org.locationtech.jts.geom.Coordinate

@@ -1,4 +1,4 @@
-package com.akvo.externalodk.validation
+package org.akvo.afribamodkvalidator.validation
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

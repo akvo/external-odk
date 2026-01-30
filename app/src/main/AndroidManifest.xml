@@ -28,9 +28,9 @@
         <activity
             android:name=".validation.PolygonValidationActivity"
             android:exported="true"
-            android:theme="@style/Theme.ExternalODK.AppCompat">
+            android:theme="@style/Theme.AfriBamODKValidator.AppCompat">
             <intent-filter>
-                <action android:name="com.akvo.externalodk.VALIDATE_POLYGON" />
+                <action android:name="org.akvo.afribamodkvalidator.VALIDATE_POLYGON" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>

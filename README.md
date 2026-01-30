@@ -333,7 +333,7 @@ Use explicit value passing when you want to validate a field from a separate tri
 | type | name | label | appearance | required |
 |------|------|-------|------------|----------|
 | geoshape | manual_boundary | Draw boundary | | yes |
-| text | validate_trigger | Tap to validate | ex:com.akvo.externalodk.VALIDATE_POLYGON(shape=${manual_boundary}) | |
+| text | validate_trigger | Tap to validate | ex:org.akvo.afribamodkvalidator.VALIDATE_POLYGON(shape=${manual_boundary}) | |
 
 ### How Blocking Works
 
