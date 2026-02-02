@@ -1,15 +1,15 @@
 package org.akvo.afribamodkvalidator.di
 
 import android.content.Context
-import org.akvo.afribamodkvalidator.data.dao.FormMetadataDao
-import org.akvo.afribamodkvalidator.data.dao.PlotDao
-import org.akvo.afribamodkvalidator.data.dao.SubmissionDao
-import org.akvo.afribamodkvalidator.data.database.AppDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import org.akvo.afribamodkvalidator.data.dao.FormMetadataDao
+import org.akvo.afribamodkvalidator.data.dao.PlotDao
+import org.akvo.afribamodkvalidator.data.dao.SubmissionDao
+import org.akvo.afribamodkvalidator.data.database.AppDatabase
 import javax.inject.Singleton
 
 /**
