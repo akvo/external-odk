@@ -17,8 +17,8 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Polygon as OsmPolygon
 import javax.inject.Inject
+import org.osmdroid.views.overlay.Polygon as OsmPolygon
 
 @AndroidEntryPoint
 class MapPreviewActivity : AppCompatActivity() {
