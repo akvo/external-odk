@@ -2,7 +2,6 @@ package org.akvo.afribamodkvalidator.validation
 
 import android.util.Log
 import org.akvo.afribamodkvalidator.data.entity.PlotEntity
-import org.locationtech.jts.geom.Geometry
 import org.locationtech.jts.geom.GeometryFactory
 import org.locationtech.jts.geom.Polygon
 import org.locationtech.jts.io.WKTReader
