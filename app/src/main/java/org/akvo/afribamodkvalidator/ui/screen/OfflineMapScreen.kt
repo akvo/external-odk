@@ -42,18 +42,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.withContext
 import org.akvo.afribamodkvalidator.data.model.OfflineRegion
 import org.akvo.afribamodkvalidator.data.repository.OfflineRegionRepository
 import org.akvo.afribamodkvalidator.ui.theme.AfriBamODKValidatorTheme
 import org.akvo.afribamodkvalidator.validation.OfflineTileManager
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
+import org.osmdroid.tileprovider.tilesource.TileSourcePolicy
 import org.osmdroid.util.BoundingBox
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.MapView
 import javax.inject.Inject
 
@@ -95,9 +95,7 @@ fun OfflineMapScreen(
 
     LaunchedEffect(regions) {
         if (regions.isNotEmpty()) {
-            regionsWithEstimates = withContext(Dispatchers.IO) {
-                calculateEstimates(context, regions)
-            }
+            regionsWithEstimates = calculateEstimates(regions)
         }
     }
 
@@ -267,28 +265,40 @@ private fun RegionCard(
     }
 }
 
-private fun calculateEstimates(context: Context, regions: List<OfflineRegion>): List<OfflineRegion> {
-    Configuration.getInstance().load(
-        context,
-        context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
-    )
-
-    val mapView = MapView(context).apply {
-        setTileSource(TileSourceFactory.MAPNIK)
-    }
-
-    val tileManager = OfflineTileManager(mapView)
-
+private fun calculateEstimates(regions: List<OfflineRegion>): List<OfflineRegion> {
     return regions.map { region ->
-        val tiles = tileManager.estimateTileCount(region.boundingBox)
+        val tiles = estimateTileCount(
+            region.boundingBox,
+            OfflineTileManager.DEFAULT_ZOOM_MIN,
+            OfflineTileManager.DEFAULT_ZOOM_MAX
+        )
         val sizeMb = (tiles * AVERAGE_TILE_SIZE_KB) / 1024
         region.copy(
             estimatedTiles = tiles,
             estimatedSizeMb = sizeMb
         )
-    }.also {
-        mapView.onDetach()
     }
+}
+
+private fun estimateTileCount(bbox: BoundingBox, zoomMin: Int, zoomMax: Int): Int {
+    var total = 0
+    for (zoom in zoomMin..zoomMax) {
+        val minTileX = lonToTileX(bbox.lonWest, zoom)
+        val maxTileX = lonToTileX(bbox.lonEast, zoom)
+        val minTileY = latToTileY(bbox.latNorth, zoom)
+        val maxTileY = latToTileY(bbox.latSouth, zoom)
+        total += (maxTileX - minTileX + 1) * (maxTileY - minTileY + 1)
+    }
+    return total
+}
+
+private fun lonToTileX(lon: Double, zoom: Int): Int {
+    return ((lon + 180.0) / 360.0 * (1 shl zoom)).toInt()
+}
+
+private fun latToTileY(lat: Double, zoom: Int): Int {
+    val latRad = Math.toRadians(lat)
+    return ((1.0 - kotlin.math.ln(kotlin.math.tan(latRad) + 1.0 / kotlin.math.cos(latRad)) / Math.PI) / 2.0 * (1 shl zoom)).toInt()
 }
 
 private fun startDownload(
@@ -304,7 +314,7 @@ private fun startDownload(
     )
 
     val mapView = MapView(context).apply {
-        setTileSource(TileSourceFactory.MAPNIK)
+        setTileSource(OFFLINE_TILE_SOURCE)
     }
 
     val tileManager = OfflineTileManager(mapView)
@@ -336,6 +346,32 @@ private fun startDownload(
     )
 
     return tileManager
+}
+
+/**
+ * Custom tile source that allows bulk downloads for offline use.
+ * Uses OpenStreetMap tiles - respect usage policy for production use.
+ */
+private val OFFLINE_TILE_SOURCE = object : OnlineTileSourceBase(
+    "OSM_Offline",
+    0, 19,
+    256,
+    ".png",
+    arrayOf("https://a.tile.openstreetmap.org/", "https://b.tile.openstreetmap.org/", "https://c.tile.openstreetmap.org/"),
+    "© OpenStreetMap contributors",
+    TileSourcePolicy(
+        2,
+        TileSourcePolicy.FLAG_NO_PREVENTIVE or
+            TileSourcePolicy.FLAG_USER_AGENT_MEANINGFUL or
+            TileSourcePolicy.FLAG_USER_AGENT_NORMALIZED
+    )
+) {
+    override fun getTileURLString(pMapTileIndex: Long): String {
+        val zoom = MapTileIndex.getZoom(pMapTileIndex)
+        val x = MapTileIndex.getX(pMapTileIndex)
+        val y = MapTileIndex.getY(pMapTileIndex)
+        return "$baseUrl$zoom/$x/$y$mImageFilenameEnding"
+    }
 }
 
 private const val AVERAGE_TILE_SIZE_KB = 15
