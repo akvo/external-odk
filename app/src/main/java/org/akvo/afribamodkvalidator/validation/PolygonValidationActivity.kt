@@ -112,9 +112,13 @@ class PolygonValidationActivity : AppCompatActivity() {
                 val overlaps = overlapChecker.checkOverlaps(polygon, candidates)
 
                 if (overlaps.isNotEmpty()) {
-                    // Found overlapping plots - show error
-                    val firstOverlap = overlaps.first()
-                    val errorMessage = "New plot for $plotName overlaps with plot for ${firstOverlap.plotName}"
+                    // Found overlapping plots - show error with all conflicting plot names
+                    val overlappingNames = overlaps.joinToString(", ") { it.plotName }
+                    val errorMessage = if (overlaps.size == 1) {
+                        "New plot for $plotName overlaps with plot for $overlappingNames"
+                    } else {
+                        "New plot for $plotName overlaps with ${overlaps.size} plots: $overlappingNames"
+                    }
                     showErrorAndBlock(errorMessage, polygonData)
                 } else {
                     // No significant overlap - save draft and return success
