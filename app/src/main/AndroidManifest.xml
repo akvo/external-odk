@@ -34,6 +34,11 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".validation.MapPreviewActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AfriBamODKValidator.AppCompat" />
     </application>
 
 </manifest>
