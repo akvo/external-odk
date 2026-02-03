@@ -1,0 +1,25 @@
+{
+  "regions": [
+    {
+      "name": "Addis Ababa",
+      "north": 9.1,
+      "east": 38.9,
+      "south": 8.8,
+      "west": 38.6
+    },
+    {
+      "name": "Bahir Dar",
+      "north": 11.65,
+      "east": 37.45,
+      "south": 11.5,
+      "west": 37.3
+    },
+    {
+      "name": "Hawassa",
+      "north": 7.1,
+      "east": 38.55,
+      "south": 6.95,
+      "west": 38.4
+    }
+  ]
+}
