@@ -40,8 +40,8 @@ erDiagram
         double maxLon "bbox"
         boolean isDraft "true until synced"
         string formId FK
-        string woreda "regional filter"
-        string kebele "regional filter"
+        string region "regional filter"
+        string subRegion "regional filter"
         long createdAt
         string submissionUuid FK "null for drafts"
     }
@@ -61,7 +61,7 @@ erDiagram
 
 ```mermaid
 flowchart TD
-    A[Kobo Form] -->|Intent: shape, plot_name, woreda, kebele| B[PolygonValidationActivity]
+    A[Kobo Form] -->|Intent: shape, plot_name, region, sub_region| B[PolygonValidationActivity]
     B --> C[Parse Polygon]
     C --> D{Valid Format?}
     D -->|No| E[Return Error]
@@ -69,7 +69,7 @@ flowchart TD
     F --> G{Pass vertices, area, self-intersect?}
     G -->|No| H[Return Error]
     G -->|Yes| I[Compute Bounding Box]
-    I --> J[Query: Nearby Plots by woreda + bbox]
+    I --> J[Query: Nearby Plots by region + bbox]
     J --> K[JTS intersects check]
     K --> L{Any Overlap?}
     L -->|Yes| M[Show Map + Return Error]
@@ -88,7 +88,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph "Step 1: Regional Filter"
-        A[New Plot] --> B{Same woreda?}
+        A[New Plot] --> B{Same region?}
         B -->|Yes| C[Include]
         B -->|No| D[Exclude - too far]
     end
@@ -107,7 +107,7 @@ flowchart LR
     end
 ```
 
-**Performance**: Plots in different woredas are never checked. Bounding box reduces JTS checks to ~5-50 candidates even with 10,000 plots.
+**Performance**: Plots in different regions are never checked. Bounding box reduces JTS checks to ~5-50 candidates even with 10,000 plots.
 
 ---
 
@@ -137,18 +137,18 @@ stateDiagram-v2
 
 ## Intent Contract
 
-### Current (needs update)
+### Current
 ```
-appearance: ex:com.akvo.externalodk.VALIDATE_POLYGON(shape=${Open_Area_GeoMapping})
+appearance: ex:org.akvo.afribamodkvalidator.VALIDATE_POLYGON(shape=${Open_Area_GeoMapping})
 ```
 
 ### Required
 ```
-appearance: ex:com.akvo.externalodk.VALIDATE_POLYGON(
+appearance: ex:org.akvo.afribamodkvalidator.VALIDATE_POLYGON(
   shape=${Open_Area_GeoMapping},
   plot_name=${First_Name} ${Father_s_Name} ${Grandfather_s_Name},
-  woreda=${woreda},
-  kebele=${kebele}
+  region=${woreda},
+  sub_region=${kebele}
 )
 ```
 
@@ -164,9 +164,9 @@ sequenceDiagram
     participant DB as Room Database
     participant M as Map View
 
-    K->>V: Intent (shape, plot_name, woreda, kebele)
+    K->>V: Intent (shape, plot_name, region, sub_region)
     V->>V: Parse & validate polygon
-    V->>DB: Query nearby plots (woreda + bbox)
+    V->>DB: Query nearby plots (region + bbox)
     DB-->>V: Candidate plots
     V->>V: JTS intersects check
 
@@ -187,10 +187,10 @@ sequenceDiagram
 ```mermaid
 flowchart TB
     subgraph MapScreen
-        A[Mapbox Satellite View]
+        A[OSMDroid Map View]
         B[Current Plot - Blue polygon]
         C[Overlapping Plots - Red polygons]
-        D[Info Panel - Bottom sheet]
+        D[Toast notification on tap]
     end
 
     A --> B
@@ -198,10 +198,10 @@ flowchart TB
     C -->|tap| D
     D --> E[Shows: plotName]
 
-    subgraph Offline Support
-        F[Pre-download by woreda]
-        G[Zoom 15-18]
-        H[~50-100 MB per woreda]
+    subgraph Implementation
+        F[Uses MAPNIK tile source]
+        G[Zoom 18 default]
+        H[Auto-centers on polygons]
     end
 ```
 
@@ -214,8 +214,8 @@ flowchart TB
 | `${First_Name} ${Father_s_Name} ${Grandfather_s_Name}` | `plot_name` | `plotName` |
 | `meta/instanceName` | (from submission) | `instanceName` |
 | `Open_Area_GeoMapping` or `manual_boundary` | `shape` | `polygonWkt` |
-| `woreda` | `woreda` | `woreda` |
-| `kebele` | `kebele` | `kebele` |
+| `woreda` | `region` | `region` |
+| `kebele` | `sub_region` | `subRegion` |
 
 **rawData fields for sync extraction**:
 - Polygon: `Open_Area_GeoMapping` (geotrace) or `manual_boundary` (geoshape)
@@ -234,20 +234,20 @@ flowchart TB
 ### Phase 2: Overlap Detection
 - [ ] Add `OverlapChecker` class using JTS
 - [ ] Implement bbox computation from polygon
-- [ ] Proximity filter: woreda + bbox pre-filter
+- [ ] Proximity filter: region + bbox pre-filter
 - [ ] JTS `intersects()` for precise check
 
 ### Phase 3: Activity Integration
 - [ ] Update `PolygonValidationActivity` for Hilt injection
-- [ ] Parse intent extras (shape, plot_name, woreda, kebele)
+- [ ] Parse intent extras (shape, plot_name, region, sub_region)
 - [ ] Save draft plot on validation launch
 - [ ] Format error message with plotName
 
 ### Phase 4: Map Visualization (MVP Required)
-- [ ] Integrate Mapbox SDK
-- [ ] Display current + overlapping polygons
-- [ ] Bottom sheet with plotName on tap
-- [ ] Offline satellite imagery by woreda
+- [x] Integrate OSMDroid (replaced Mapbox for simplicity)
+- [x] Display current polygon (blue) + overlapping polygons (red)
+- [x] Toast notification with plotName on tap
+- [ ] Offline tile caching (future enhancement)
 
 ### Phase 5: Draft Sync
 - [ ] Match drafts to submissions by instanceName after sync
@@ -255,7 +255,7 @@ flowchart TB
 - [ ] Extract plots from synced rawData (polygon + farmer name fields)
 
 ### Phase 6: XLSForm Update
-- [ ] Update intent appearance to pass plot_name, woreda, kebele
+- [ ] Update intent appearance to pass plot_name, region, sub_region
 - [ ] Test with updated form
 
 ---
@@ -280,7 +280,7 @@ New plot for Abebe Kebede Tadesse overlaps with plot for Girma Tesfaye Hailu
 ```sql
 SELECT * FROM plots
 WHERE uuid != :excludeUuid
-  AND woreda = :woreda
+  AND region = :region
   AND minLat <= :newMaxLat
   AND maxLat >= :newMinLat
   AND minLon <= :newMaxLon
@@ -303,4 +303,4 @@ WHERE instanceName = :instanceName
 - `org.locationtech.jts:jts-core`
 
 **Need to add:**
-- `com.mapbox.maps:android:11.x.x` (for map visualization)
+- `org.osmdroid:osmdroid-android:6.1.18` (for map visualization) ✅ Added
