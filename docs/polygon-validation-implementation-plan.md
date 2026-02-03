@@ -34,14 +34,14 @@ erDiagram
         string plotName "Farmer full name for display"
         string instanceName "For draft-to-submission matching"
         string polygonWkt "WKT format"
-        double minLat "bbox"
-        double maxLat "bbox"
-        double minLon "bbox"
-        double maxLon "bbox"
+        double minLat "bbox indexed"
+        double maxLat "bbox indexed"
+        double minLon "bbox indexed"
+        double maxLon "bbox indexed"
         boolean isDraft "true until synced"
         string formId FK
-        string region "regional filter"
-        string subRegion "regional filter"
+        string region "administrative label only"
+        string subRegion "administrative label only"
         long createdAt
         string submissionUuid FK "null for drafts"
     }
@@ -69,7 +69,7 @@ flowchart TD
     F --> G{Pass vertices, area, self-intersect?}
     G -->|No| H[Return Error]
     G -->|Yes| I[Compute Bounding Box]
-    I --> J[Query: Nearby Plots by region + bbox]
+    I --> J[Query: Nearby Plots by bbox]
     J --> K[JTS intersects check]
     K --> L{Any Overlap?}
     L -->|Yes| M[Show Map + Return Error]
@@ -83,31 +83,27 @@ flowchart TD
 
 ---
 
-## Proximity Filtering Strategy
+## Overlap Detection Strategy
 
 ```mermaid
 flowchart LR
-    subgraph "Step 1: Regional Filter"
-        A[New Plot] --> B{Same region?}
-        B -->|Yes| C[Include]
-        B -->|No| D[Exclude - too far]
+    subgraph "Step 1: Bounding Box Filter"
+        A[New Plot] --> B{bbox intersects?}
+        B -->|Yes| C[Candidate]
+        B -->|No| D[Exclude]
     end
 
-    subgraph "Step 2: Bounding Box Filter"
-        C --> E{bbox intersects?}
-        E -->|Yes| F[Candidate]
-        E -->|No| G[Exclude]
-    end
-
-    subgraph "Step 3: JTS Precise Check"
-        F --> H[JTS intersects]
-        H --> I{Overlaps?}
-        I -->|Yes| J[Add to overlap list]
-        I -->|No| K[Skip]
+    subgraph "Step 2: JTS Precise Check"
+        C --> E[JTS intersects]
+        E --> F{Overlaps >= 5%?}
+        F -->|Yes| G[Add to overlap list]
+        F -->|No| H[Skip]
     end
 ```
 
-**Performance**: Plots in different regions are never checked. Bounding box reduces JTS checks to ~5-50 candidates even with 10,000 plots.
+**Note**: Region is stored as metadata only, not used for filtering. This ensures overlaps are detected even when the same plot is registered with a different region label (wrong selection, boundary plots, fraud prevention).
+
+**Performance**: Single-column bbox indexes allow efficient range queries. Bounding box reduces JTS checks to ~5-50 candidates even with 10,000 plots.
 
 ---
 
@@ -166,7 +162,7 @@ sequenceDiagram
 
     K->>V: Intent (shape, plot_name, region, sub_region)
     V->>V: Parse & validate polygon
-    V->>DB: Query nearby plots (region + bbox)
+    V->>DB: Query nearby plots (bbox filter)
     DB-->>V: Candidate plots
     V->>V: JTS intersects check
 
@@ -276,16 +272,15 @@ New plot for Abebe Kebede Tadesse overlaps with plot for Girma Tesfaye Hailu
 
 ## SQL Queries
 
-### Proximity + Bounding Box Query
+### Bounding Box Overlap Query
 ```sql
 SELECT * FROM plots
 WHERE uuid != :excludeUuid
-  AND region = :region
-  AND minLat <= :newMaxLat
-  AND maxLat >= :newMinLat
-  AND minLon <= :newMaxLon
-  AND maxLon >= :newMinLon
+  AND minLon <= :maxLon AND maxLon >= :minLon
+  AND minLat <= :maxLat AND maxLat >= :minLat
 ```
+
+**Index Strategy**: Single-column indexes on `minLat`, `maxLat`, `minLon`, `maxLon` allow SQLite query planner to choose the most selective index for range queries. Composite indexes are ineffective for range-only conditions.
 
 ### Match Draft to Submission
 ```sql

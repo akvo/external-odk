@@ -11,18 +11,20 @@ import androidx.room.PrimaryKey
  * - polygonWkt: Stores polygon in WKT format for JTS geometry operations
  * - minLat/maxLat/minLon/maxLon: Bounding box for efficient SQL pre-filtering
  * - isDraft: Tracks whether plot is from draft (local) or synced submission
- * - region: Indexed for proximity filtering (only check overlaps within same region)
+ * - region: Administrative label only (not used for overlap filtering)
  *
  * Index strategy for findOverlapCandidates query:
- * - Composite (region, minLon) supports equality on region + range on minLon
- * - Composite (region, minLat) supports equality on region + range on minLat
- * - SQLite query planner selects the most effective index per query
+ * - Single-column bbox indexes allow SQLite query planner to choose the most
+ *   selective index for range conditions on bounding box columns.
+ * - Composite indexes are ineffective for range-only queries.
  */
 @Entity(
     tableName = "plots",
     indices = [
-        Index(value = ["region", "minLon"]),
-        Index(value = ["region", "minLat"]),
+        Index(value = ["minLat"]),
+        Index(value = ["maxLat"]),
+        Index(value = ["minLon"]),
+        Index(value = ["maxLon"]),
         Index(value = ["instanceName"]),
         Index(value = ["submissionUuid"])
     ]

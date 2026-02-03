@@ -94,21 +94,17 @@ class PolygonValidationActivity : AppCompatActivity() {
                 }
                 val plotUuid = existingPlot?.uuid ?: UUID.randomUUID().toString()
 
-                // Query overlap candidates from database
-                val candidates = if (region.isNotEmpty()) {
-                    plotDao.findOverlapCandidates(
-                        region = region,
-                        minLat = bbox.minLat,
-                        maxLat = bbox.maxLat,
-                        minLon = bbox.minLon,
-                        maxLon = bbox.maxLon,
-                        excludeUuid = plotUuid
-                    )
-                } else {
-                    emptyList()
-                }
+                // Query overlap candidates from database using bounding box only
+                // Region is just a label - actual overlap is determined by geoshape
+                val candidates = plotDao.findOverlapCandidates(
+                    minLat = bbox.minLat,
+                    maxLat = bbox.maxLat,
+                    minLon = bbox.minLon,
+                    maxLon = bbox.maxLon,
+                    excludeUuid = plotUuid
+                )
 
-                // Check for significant overlaps (>= 5%)
+                // Check for significant overlaps (>= 5%) using JTS geometry
                 val overlaps = overlapChecker.checkOverlaps(polygon, candidates)
 
                 if (overlaps.isNotEmpty()) {

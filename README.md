@@ -366,9 +366,11 @@ The app detects overlapping plots to prevent duplicate land registrations. When 
 ### How It Works
 
 1. **Single-polygon validation** runs first (vertex count, area, self-intersection)
-2. **Bounding box pre-filter** queries nearby plots from the database (same region)
+2. **Bounding box pre-filter** queries nearby plots from the database using indexed bbox columns
 3. **JTS geometry check** computes precise intersection area
 4. **Threshold check**: overlap >= 5% of smaller polygon → blocked
+
+> **Note**: Region is stored as metadata only, not used for filtering. This ensures overlaps are detected even when the same plot is registered with a different region label (wrong selection, boundary plots, fraud prevention).
 
 ### Intent Extras
 
@@ -378,8 +380,8 @@ Pass these extras from XLSForm to enable overlap detection:
 |-------|-------------|----------|
 | `shape` | Polygon data (geoshape or WKT format) | Yes |
 | `plot_name` | Farmer name for error messages | Yes |
-| `region` | Administrative region for proximity filter | Yes |
-| `sub_region` | Sub-region (optional filtering) | No |
+| `region` | Administrative region (metadata, stored with plot) | Yes |
+| `sub_region` | Sub-region (metadata, stored with plot) | No |
 | `instance_name` | Form instance name for draft matching | No |
 
 ### XLSForm Configuration for Overlap Detection

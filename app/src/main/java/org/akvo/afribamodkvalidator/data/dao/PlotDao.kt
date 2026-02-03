@@ -29,24 +29,27 @@ interface PlotDao {
     suspend fun insertOrUpdateAll(plots: List<PlotEntity>)
 
     /**
-     * Find overlap candidates using region and bounding box pre-filter.
+     * Find overlap candidates using bounding box pre-filter.
      *
-     * Returns plots in the same region whose bounding boxes intersect with the query bbox.
+     * Returns all plots whose bounding boxes intersect with the query bbox,
+     * regardless of region. Region is just a label - actual overlap detection
+     * is based on geoshape similarity.
+     *
      * Excludes the specified UUID (for self-comparison when updating).
      *
      * Bbox intersection logic: Two boxes intersect if they overlap on both axes.
      * - X-axis overlap: existingMinLon <= queryMaxLon AND existingMaxLon >= queryMinLon
      * - Y-axis overlap: existingMinLat <= queryMaxLat AND existingMaxLat >= queryMinLat
+     *
+     * Uses single-column bbox indexes for efficient range queries.
      */
     @Query("""
         SELECT * FROM plots
-        WHERE region = :region
-        AND uuid != :excludeUuid
+        WHERE uuid != :excludeUuid
         AND minLon <= :maxLon AND maxLon >= :minLon
         AND minLat <= :maxLat AND maxLat >= :minLat
     """)
     suspend fun findOverlapCandidates(
-        region: String,
         minLat: Double,
         maxLat: Double,
         minLon: Double,

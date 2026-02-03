@@ -219,7 +219,7 @@ class PlotDaoTest : DatabaseTest() {
     // ==================== Bounding Box Intersection Tests ====================
 
     @Test
-    fun `findOverlapCandidates should return overlapping bbox in same region`() = runTest {
+    fun `findOverlapCandidates should return overlapping bbox`() = runTest {
         // Existing plot: 0-10 x 0-10
         val existing = createPlot(
             uuid = "existing",
@@ -231,7 +231,6 @@ class PlotDaoTest : DatabaseTest() {
 
         // Query bbox: 5-15 x 5-15 (overlaps with existing)
         val candidates = plotDao.findOverlapCandidates(
-            region = "region-A",
             minLat = 5.0, maxLat = 15.0,
             minLon = 5.0, maxLon = 15.0,
             excludeUuid = "new-plot"
@@ -254,7 +253,6 @@ class PlotDaoTest : DatabaseTest() {
 
         // Query bbox: 20-30 x 20-30 (no overlap)
         val candidates = plotDao.findOverlapCandidates(
-            region = "region-A",
             minLat = 20.0, maxLat = 30.0,
             minLon = 20.0, maxLon = 30.0,
             excludeUuid = "new-plot"
@@ -264,23 +262,24 @@ class PlotDaoTest : DatabaseTest() {
     }
 
     @Test
-    fun `findOverlapCandidates should filter by region`() = runTest {
+    fun `findOverlapCandidates should find plots across different regions`() = runTest {
         // Two plots with overlapping bboxes but different regions
+        // Region is just a label - overlap detection should find both
         plotDao.insertOrUpdateAll(listOf(
             createPlot(uuid = "plot-A", region = "region-A", minLat = 0.0, maxLat = 10.0, minLon = 0.0, maxLon = 10.0),
             createPlot(uuid = "plot-B", region = "region-B", minLat = 0.0, maxLat = 10.0, minLon = 0.0, maxLon = 10.0)
         ))
 
-        // Query for region-A only
+        // Query should find both regardless of region
         val candidates = plotDao.findOverlapCandidates(
-            region = "region-A",
             minLat = 0.0, maxLat = 10.0,
             minLon = 0.0, maxLon = 10.0,
             excludeUuid = "new-plot"
         )
 
-        assertEquals(1, candidates.size)
-        assertEquals("plot-A", candidates[0].uuid)
+        assertEquals(2, candidates.size)
+        assertTrue(candidates.any { it.uuid == "plot-A" })
+        assertTrue(candidates.any { it.uuid == "plot-B" })
     }
 
     @Test
@@ -294,7 +293,6 @@ class PlotDaoTest : DatabaseTest() {
 
         // Query with same bbox but exclude self
         val candidates = plotDao.findOverlapCandidates(
-            region = "region-A",
             minLat = 0.0, maxLat = 10.0,
             minLon = 0.0, maxLon = 10.0,
             excludeUuid = "self"
@@ -316,7 +314,6 @@ class PlotDaoTest : DatabaseTest() {
 
         // Query bbox: 10-20 x 0-10 (shares edge at x=10)
         val candidates = plotDao.findOverlapCandidates(
-            region = "region-A",
             minLat = 0.0, maxLat = 10.0,
             minLon = 10.0, maxLon = 20.0,
             excludeUuid = "new-plot"
@@ -339,7 +336,6 @@ class PlotDaoTest : DatabaseTest() {
 
         // Query bbox: 5-15 x 20-30 (overlaps on X axis but not Y axis)
         val candidates = plotDao.findOverlapCandidates(
-            region = "region-A",
             minLat = 20.0, maxLat = 30.0,
             minLon = 5.0, maxLon = 15.0,
             excludeUuid = "new-plot"
@@ -351,22 +347,44 @@ class PlotDaoTest : DatabaseTest() {
 
     @Test
     fun `findOverlapCandidates should return multiple overlapping plots`() = runTest {
-        // Create 3 plots that all overlap with query bbox
+        // Create 3 plots that all overlap with query bbox (different regions)
         plotDao.insertOrUpdateAll(listOf(
             createPlot(uuid = "plot-1", region = "region-A", minLat = 0.0, maxLat = 10.0, minLon = 0.0, maxLon = 10.0),
-            createPlot(uuid = "plot-2", region = "region-A", minLat = 5.0, maxLat = 15.0, minLon = 5.0, maxLon = 15.0),
-            createPlot(uuid = "plot-3", region = "region-A", minLat = 8.0, maxLat = 12.0, minLon = 8.0, maxLon = 12.0)
+            createPlot(uuid = "plot-2", region = "region-B", minLat = 5.0, maxLat = 15.0, minLon = 5.0, maxLon = 15.0),
+            createPlot(uuid = "plot-3", region = "region-C", minLat = 8.0, maxLat = 12.0, minLon = 8.0, maxLon = 12.0)
         ))
 
         // Query bbox: 7-11 x 7-11 (overlaps with all 3)
         val candidates = plotDao.findOverlapCandidates(
-            region = "region-A",
             minLat = 7.0, maxLat = 11.0,
             minLon = 7.0, maxLon = 11.0,
             excludeUuid = "new-plot"
         )
 
         assertEquals(3, candidates.size)
+    }
+
+    @Test
+    fun `findOverlapCandidates catches same plot registered in different region`() = runTest {
+        // Simulate fraud: same plot registered in different region
+        val existingPlot = createPlot(
+            uuid = "original-plot",
+            plotName = "Farmer A Plot",
+            region = "woreda-1",
+            minLat = 9.0, maxLat = 9.1,
+            minLon = 38.0, maxLon = 38.1
+        )
+        plotDao.insertOrUpdate(existingPlot)
+
+        // Query finds the duplicate regardless of region label
+        val candidates = plotDao.findOverlapCandidates(
+            minLat = 9.0, maxLat = 9.1,
+            minLon = 38.0, maxLon = 38.1,
+            excludeUuid = "new-registration"
+        )
+
+        assertEquals(1, candidates.size)
+        assertEquals("original-plot", candidates[0].uuid)
     }
 
     // ==================== Draft Status Update Tests ====================
