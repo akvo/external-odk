@@ -10,6 +10,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import org.akvo.afribamodkvalidator.data.dao.PlotDao
 import org.akvo.afribamodkvalidator.data.entity.PlotEntity
+import org.akvo.afribamodkvalidator.data.session.SessionManager
 import java.util.UUID
 import javax.inject.Inject
 
@@ -18,6 +19,9 @@ class PolygonValidationActivity : AppCompatActivity() {
 
     @Inject
     lateinit var plotDao: PlotDao
+
+    @Inject
+    lateinit var sessionManager: SessionManager
 
     private val validator = PolygonValidator()
     private val overlapChecker = OverlapChecker()
@@ -30,8 +34,10 @@ class PolygonValidationActivity : AppCompatActivity() {
         val plotName = intent.getStringExtra(EXTRA_PLOT_NAME) ?: ""
         val region = intent.getStringExtra(EXTRA_REGION) ?: ""
         val subRegion = intent.getStringExtra(EXTRA_SUB_REGION) ?: ""
-        val formId = intent.getStringExtra(EXTRA_FORM_ID) ?: ""
         val instanceName = intent.getStringExtra(EXTRA_INSTANCE_NAME) ?: ""
+
+        // Get formId (assetUid) from session
+        val formId = sessionManager.getSession()?.assetUid ?: ""
 
         if (polygonData.isNullOrBlank()) {
             showErrorAndBlock("No polygon data received from form.", null)
@@ -189,7 +195,6 @@ class PolygonValidationActivity : AppCompatActivity() {
         const val EXTRA_PLOT_NAME = "plot_name"
         const val EXTRA_REGION = "region"
         const val EXTRA_SUB_REGION = "sub_region"
-        const val EXTRA_FORM_ID = "form_id"
         const val EXTRA_INSTANCE_NAME = "instance_name"
     }
 }

@@ -380,7 +380,6 @@ Pass these extras from XLSForm to enable overlap detection:
 | `plot_name` | Farmer name for error messages | Yes |
 | `region` | Administrative region for proximity filter | Yes |
 | `sub_region` | Sub-region (optional filtering) | No |
-| `form_id` | KoboToolbox form asset UID | No |
 | `instance_name` | Form instance name for draft matching | No |
 
 ### XLSForm Configuration for Overlap Detection
@@ -396,15 +395,17 @@ Pass these extras from XLSForm to enable overlap detection:
 | select_one regions | region | Select Region | |
 | select_one sub_regions | sub_region | Select Sub-Region | |
 | calculate | full_name | | |
-| text | validate_plot | Validate Plot | ex:org.akvo.afribamodkvalidator.VALIDATE_POLYGON(shape=${plot_boundary},plot_name=${full_name},region=${region},sub_region=${sub_region},form_id=${asset_uid},instance_name=${instance_name}) |
+| calculate | instance_id | | |
+| text | validate_plot | Validate Plot | ex:org.akvo.afribamodkvalidator.VALIDATE_POLYGON(shape=${plot_boundary},plot_name=${full_name},region=${region},sub_region=${sub_region},instance_name=${instance_id}) |
 
 **calculations sheet:**
 
 | name | calculation |
 |------|-------------|
 | full_name | concat(${first_name}, ' ', ${father_name}, ' ', ${grandfather_name}) |
-| asset_uid | 'your-kobo-form-asset-uid' |
-| instance_name | concat(${enumerator_id}, '-', ${region}, '-', today()) |
+| instance_id | concat(${enumerator_id}, '-', ${region}, '-', today()) |
+
+> **Note**: `instance_id` duplicates the logic from `instance_name` in the settings sheet because settings fields cannot be referenced directly in survey expressions.
 
 ### Overlap Error Messages
 
