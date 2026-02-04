@@ -62,8 +62,8 @@ dependencies {
     // JTS Topology Suite for polygon validation
     implementation(libs.jts.core)
 
-    // OSMDroid for map visualization
-    implementation(libs.osmdroid.android)
+    // Mapbox Maps SDK for satellite imagery
+    implementation(libs.mapbox.maps)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
