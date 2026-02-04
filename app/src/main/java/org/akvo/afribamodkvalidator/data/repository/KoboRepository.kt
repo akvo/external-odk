@@ -26,7 +26,8 @@ class KoboRepository @Inject constructor(
     private val apiService: KoboApiService,
     private val submissionDao: SubmissionDao,
     private val formMetadataDao: FormMetadataDao,
-    private val plotDao: PlotDao
+    private val plotDao: PlotDao,
+    private val plotExtractor: PlotExtractor
 ) {
 
     /**
@@ -85,6 +86,8 @@ class KoboRepository @Inject constructor(
                 }
                 // Match drafts to submissions after sync
                 matchDraftsToSubmissions()
+                // Extract plots from synced submissions
+                extractPlotsFromSubmissions(assetUid)
             }
 
             Result.success(totalFetched)
@@ -136,6 +139,8 @@ class KoboRepository @Inject constructor(
                 }
                 // Match drafts to submissions after sync
                 matchDraftsToSubmissions()
+                // Extract plots from synced submissions
+                extractPlotsFromSubmissions(assetUid)
             }
 
             Result.success(totalFetched)
@@ -164,6 +169,33 @@ class KoboRepository @Inject constructor(
                 )
             }
             // No match: draft remains a draft (no action needed)
+        }
+    }
+
+    /**
+     * Extracts plots from synced submissions that don't already have plots.
+     *
+     * For each submission:
+     * - Checks if a plot already exists with this submissionUuid
+     * - If not, extracts plot data from rawData (polygon, farmer name, region)
+     * - Inserts as PlotEntity with isDraft=false
+     */
+    private suspend fun extractPlotsFromSubmissions(assetUid: String) {
+        val submissions = submissionDao.getSubmissionsSync(assetUid)
+
+        for (submission in submissions) {
+            // Skip if plot already exists for this submission
+            val existingPlot = plotDao.findBySubmissionUuid(submission._uuid)
+            if (existingPlot != null) {
+                continue
+            }
+
+            // Try to extract plot from submission rawData
+            val plot = plotExtractor.extractPlot(submission)
+            if (plot != null) {
+                plotDao.insertOrUpdate(plot)
+            }
+            // No plot extracted: submission doesn't have polygon data (skip silently)
         }
     }
 
