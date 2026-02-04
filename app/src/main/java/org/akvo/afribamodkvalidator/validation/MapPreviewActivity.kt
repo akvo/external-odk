@@ -2,12 +2,24 @@ package org.akvo.afribamodkvalidator.validation
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Bundle
+import android.view.Gravity
+import android.view.View
 import android.widget.FrameLayout
+import android.widget.TextView
 import android.widget.Toast
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.toColorInt
+import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -33,6 +45,7 @@ import com.mapbox.maps.viewannotation.geometry
 import com.mapbox.maps.viewannotation.viewAnnotationOptions
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import org.akvo.afribamodkvalidator.R
 import org.akvo.afribamodkvalidator.data.dao.PlotDao
 import org.locationtech.jts.geom.Geometry
 import org.locationtech.jts.io.WKTReader
@@ -50,7 +63,24 @@ class MapPreviewActivity : AppCompatActivity() {
 
     // Map source IDs to plot names for click handling
     private val sourceToPlotName = mutableMapOf<String, String>()
-    private var currentPopupView: android.view.View? = null
+    private var currentPopupView: View? = null
+
+    // Store polygon center for Google Maps button
+    private var polygonCenterLat: Double = 0.0
+    private var polygonCenterLon: Double = 0.0
+
+    // Google Maps FAB and network monitoring
+    private lateinit var googleMapsFab: FloatingActionButton
+    private lateinit var connectivityManager: ConnectivityManager
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            runOnUiThread { googleMapsFab.visibility = View.VISIBLE }
+        }
+
+        override fun onLost(network: Network) {
+            runOnUiThread { googleMapsFab.visibility = View.GONE }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,6 +105,61 @@ class MapPreviewActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
         )
+
+        // Add imagery disclaimer banner at bottom-left (avoids Mapbox scale legend at top)
+        val disclaimerBanner = TextView(this).apply {
+            text = getString(R.string.imagery_disclaimer)
+            setTextColor(Color.WHITE)
+            textSize = 12f
+            setPadding(
+                (10 * resources.displayMetrics.density).toInt(),
+                (6 * resources.displayMetrics.density).toInt(),
+                (10 * resources.displayMetrics.density).toInt(),
+                (6 * resources.displayMetrics.density).toInt()
+            )
+            setBackgroundColor("#99000000".toColorInt())
+        }
+        val bannerParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            gravity = Gravity.TOP
+            marginStart = (6 * resources.displayMetrics.density).toInt()
+            topMargin = (36 * resources.displayMetrics.density).toInt()
+        }
+        container.addView(disclaimerBanner, bannerParams)
+
+        // Add Google Maps FAB button (conditionally visible based on network)
+        googleMapsFab = FloatingActionButton(this).apply {
+            setImageResource(android.R.drawable.ic_dialog_map)
+            contentDescription = getString(R.string.view_in_google_maps)
+            visibility = View.GONE // Hidden by default, shown when online
+            setOnClickListener { openInGoogleMaps() }
+        }
+        val fabParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            gravity = Gravity.BOTTOM or Gravity.END
+            marginEnd = (24 * resources.displayMetrics.density).toInt()
+            bottomMargin = (24 * resources.displayMetrics.density).toInt()
+        }
+        container.addView(googleMapsFab, fabParams)
+
+        // Setup network connectivity monitoring
+        connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val networkRequest = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
+
+        // Check initial connectivity state
+        val isOnline = connectivityManager.activeNetwork?.let { network ->
+            connectivityManager.getNetworkCapabilities(network)
+                ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } ?: false
+        googleMapsFab.visibility = if (isOnline) View.VISIBLE else View.GONE
+
         setContentView(container)
 
         // Apply window insets to avoid overlapping with system navigation bar
@@ -152,18 +237,18 @@ class MapPreviewActivity : AppCompatActivity() {
 
     private fun showPopup(point: Point, plotName: String) {
         // Create rounded background drawable
-        val backgroundDrawable = android.graphics.drawable.GradientDrawable().apply {
-            setColor(android.graphics.Color.WHITE)
+        val backgroundDrawable = GradientDrawable().apply {
+            setColor(Color.WHITE)
             cornerRadius = 24f
-            setStroke(2, android.graphics.Color.parseColor("#CCCCCC"))
+            setStroke(2, "#CCCCCC".toColorInt())
         }
 
         // Create popup view with proper LayoutParams
-        val popupView = android.widget.TextView(this).apply {
+        val popupView = TextView(this).apply {
             text = plotName
             background = backgroundDrawable
             setPadding(32, 20, 32, 24) // left, top, right, bottom
-            setTextColor(android.graphics.Color.parseColor("#333333"))
+            setTextColor("#333333".toColorInt())
             textSize = 15f
             maxWidth = 700
             elevation = 8f
@@ -260,7 +345,7 @@ class MapPreviewActivity : AppCompatActivity() {
     private fun parseWkt(wkt: String): Geometry? {
         return try {
             wktReader.read(wkt)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -313,6 +398,26 @@ class MapPreviewActivity : AppCompatActivity() {
         return points
     }
 
+    private fun openInGoogleMaps() {
+        if (polygonCenterLat == 0.0 && polygonCenterLon == 0.0) {
+            Toast.makeText(this, "Location not available", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Open Google Maps in satellite view centered on the polygon
+        // Using zoom level 18 for detailed satellite view
+        val gmmIntentUri =
+            "https://www.google.com/maps/@$polygonCenterLat,$polygonCenterLon,18z/data=!3m1!1e3".toUri()
+        val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+
+        if (mapIntent.resolveActivity(packageManager) != null) {
+            startActivity(mapIntent)
+        } else {
+            // Fallback to browser if no app can handle it
+            startActivity(Intent(Intent.ACTION_VIEW, gmmIntentUri))
+        }
+    }
+
     private fun zoomToFitPoints(points: List<Point>) {
         if (points.isEmpty()) return
 
@@ -321,9 +426,11 @@ class MapPreviewActivity : AppCompatActivity() {
         val minLon = points.minOf { it.longitude() }
         val maxLon = points.maxOf { it.longitude() }
 
-        // Calculate center
+        // Calculate center and store for Google Maps button
         val centerLat = (minLat + maxLat) / 2
         val centerLon = (minLon + maxLon) / 2
+        polygonCenterLat = centerLat
+        polygonCenterLon = centerLon
 
         // Calculate appropriate zoom level based on bounds
         val latDiff = maxLat - minLat
@@ -346,24 +453,9 @@ class MapPreviewActivity : AppCompatActivity() {
         )
     }
 
-    override fun onStart() {
-        super.onStart()
-        mapView.onStart()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        mapView.onStop()
-    }
-
-    override fun onLowMemory() {
-        super.onLowMemory()
-        mapView.onLowMemory()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
-        mapView.onDestroy()
+        connectivityManager.unregisterNetworkCallback(networkCallback)
     }
 
     companion object {

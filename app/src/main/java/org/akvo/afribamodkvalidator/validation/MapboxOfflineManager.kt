@@ -2,7 +2,6 @@ package org.akvo.afribamodkvalidator.validation
 
 import android.content.Context
 import com.mapbox.common.Cancelable
-import com.mapbox.common.TileRegionError
 import com.mapbox.common.TileRegionErrorType
 import com.mapbox.common.TileRegionLoadOptions
 import com.mapbox.common.TileStore
@@ -85,20 +84,18 @@ class MapboxOfflineManager(private val context: Context) {
                 callback.onProgress(completedResources.toInt(), requiredResources.toInt())
             }
         ) { expected ->
-            expected.fold(
-                { tileRegion ->
-                    // Success
-                    callback.onComplete()
-                },
-                { error ->
-                    // Error or cancellation
-                    if (error is TileRegionError && error.type == TileRegionErrorType.CANCELED) {
-                        callback.onCanceled()
-                    } else {
-                        callback.onFailed(error.toString())
-                    }
+            if (expected.isValue) {
+                // Success
+                callback.onComplete()
+            } else {
+                // Error or cancellation
+                val error = expected.error
+                if (error?.type == TileRegionErrorType.CANCELED) {
+                    callback.onCanceled()
+                } else {
+                    callback.onFailed(error?.message ?: "Unknown error")
                 }
-            )
+            }
         }
     }
 
