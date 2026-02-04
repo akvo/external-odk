@@ -107,6 +107,12 @@ interface PlotDao {
     suspend fun getByUuid(uuid: String): PlotEntity?
 
     /**
+     * Find a plot by submissionUuid (to check if already extracted).
+     */
+    @Query("SELECT * FROM plots WHERE submissionUuid = :submissionUuid LIMIT 1")
+    suspend fun findBySubmissionUuid(submissionUuid: String): PlotEntity?
+
+    /**
      * Get multiple plots by their UUIDs.
      */
     @Query("SELECT * FROM plots WHERE uuid IN (:uuids)")
