@@ -1,7 +1,6 @@
 package org.akvo.afribamodkvalidator.data.model
 
 import kotlinx.serialization.Serializable
-import org.osmdroid.util.BoundingBox
 
 @Serializable
 data class OfflineRegionsConfig(
@@ -18,11 +17,21 @@ data class OfflineRegionJson(
 )
 
 /**
+ * Geographic bounding box for offline map regions.
+ */
+data class MapBoundingBox(
+    val latNorth: Double,
+    val lonEast: Double,
+    val latSouth: Double,
+    val lonWest: Double
+)
+
+/**
  * Domain model for offline region with calculated properties.
  */
 data class OfflineRegion(
     val name: String,
-    val boundingBox: BoundingBox,
+    val boundingBox: MapBoundingBox,
     val estimatedTiles: Int = 0,
     val estimatedSizeMb: Int = 0
 )
@@ -30,6 +39,11 @@ data class OfflineRegion(
 fun OfflineRegionJson.toDomain(): OfflineRegion {
     return OfflineRegion(
         name = name,
-        boundingBox = BoundingBox(north, east, south, west)
+        boundingBox = MapBoundingBox(
+            latNorth = north,
+            lonEast = east,
+            latSouth = south,
+            lonWest = west
+        )
     )
 }
