@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
@@ -39,13 +41,27 @@ class MapPreviewActivity : AppCompatActivity() {
         config.osmdroidTileCache = filesDir  // Use app internal storage
         config.expirationOverrideDuration = CACHE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000L
 
+        // Handle back press to close activity
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                finishAffinity()
+            }
+        })
+
         // Create and configure map view
         mapView = MapView(this)
         mapView.setTileSource(TileSourceFactory.MAPNIK)
         mapView.setMultiTouchControls(true)
         mapView.controller.setZoom(18.0)
 
-        setContentView(mapView)
+        // Create container layout
+        val container = FrameLayout(this)
+        container.addView(mapView, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+
+        setContentView(container)
 
         // Get intent extras
         val currentPolygonWkt = intent.getStringExtra(EXTRA_CURRENT_POLYGON_WKT)
