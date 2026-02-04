@@ -153,7 +153,7 @@ fun OfflineMapScreen(
                     items(regionsWithEstimates) { region ->
                         RegionCard(
                             region = region,
-                            isDownloading = downloadingRegion == region.name,
+                            isDownloading = downloadingRegion != null,
                             onDownload = {
                                 downloadingRegion = region.name
                                 downloadProgress = 0f
