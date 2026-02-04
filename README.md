@@ -430,7 +430,27 @@ On successful validation, the plot is saved as a draft in the local database:
 - Stored with `isDraft = true`
 - Linked to form via `instanceName`
 - Used for overlap detection with subsequent plots
-- Can be matched to synced submissions later
+
+### Sync Integration
+
+When submissions are synced from KoboToolbox, the app automatically:
+
+1. **Matches drafts to submissions**: Links local draft plots to their synced submissions by `instanceName`, updating `isDraft = false`
+
+2. **Extracts plots from synced data**: Creates `PlotEntity` records from synced submissions by parsing `rawData` JSON for polygon and farmer information
+
+This ensures overlap detection works against **all plots** (both local drafts and synced submissions from other users/devices).
+
+**Field Mapping Configuration**: Edit `assets/plot_extraction_config.json` to customize which fields are extracted:
+
+```json
+{
+  "polygonFields": ["boundary_mapping/Open_Area_GeoMapping", "manual_boundary"],
+  "plotNameFields": ["First_Name", "Father_s_Name", "Grandfather_s_Name"],
+  "regionField": "woreda",
+  "subRegionField": "kebele"
+}
+```
 
 ## Map Visualization
 
