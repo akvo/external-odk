@@ -5,8 +5,8 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.color.MaterialColors
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.color.MaterialColors
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import org.akvo.afribamodkvalidator.data.dao.PlotDao
