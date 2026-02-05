@@ -22,6 +22,8 @@ import javax.inject.Singleton
  * then converts to a PlotEntity ready for database insertion.
  *
  * Field mappings are loaded from assets/plot_extraction_config.json.
+ * Configuration is pre-loaded during initialization to ensure predictable
+ * extraction timing during sync operations.
  */
 @Singleton
 class PlotExtractor @Inject constructor(
@@ -32,12 +34,28 @@ class PlotExtractor @Inject constructor(
     private val overlapChecker = OverlapChecker()
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val config: PlotExtractionConfig by lazy { loadConfig() }
+    /**
+     * Configuration is loaded eagerly during initialization to avoid
+     * asset loading overhead during the first sync operation.
+     */
+    private val config: PlotExtractionConfig = loadConfig()
+
+    init {
+        Log.d(TAG, "PlotExtractor initialized with config: " +
+                "polygonFields=${config.polygonFields.size}, " +
+                "plotNameFields=${config.plotNameFields.size}, " +
+                "regionField=${config.regionField}, " +
+                "subRegionField=${config.subRegionField}")
+    }
 
     private fun loadConfig(): PlotExtractionConfig {
+        val startTime = System.currentTimeMillis()
         return try {
             val configJson = context.assets.open(CONFIG_FILE).bufferedReader().use { it.readText() }
-            json.decodeFromString<PlotExtractionConfig>(configJson)
+            val loadedConfig = json.decodeFromString<PlotExtractionConfig>(configJson)
+            val elapsedMs = System.currentTimeMillis() - startTime
+            Log.d(TAG, "Loaded plot extraction config from $CONFIG_FILE in ${elapsedMs}ms")
+            loadedConfig
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load plot extraction config, using defaults", e)
             DEFAULT_CONFIG
